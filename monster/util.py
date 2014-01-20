@@ -1,9 +1,11 @@
 import os
 import logging
 from glob import glob
+from limpyd import model
 from xml.etree import ElementTree
-
 from inspect import getmembers, isclass
+
+redis = model.RedisDatabase(host="localhost", port=6379, db=0)
 
 # Log to console
 logger = logging.getLogger("rcbops.qa")
