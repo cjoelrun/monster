@@ -4,6 +4,7 @@ OpenStack deployments
 
 import types
 import tmuxp
+
 from monster import util
 
 
@@ -12,16 +13,23 @@ class Deployment(object):
     """
 
     def __init__(self, name, os_name, branch, provisioner, status, product,
-                 clients=None):
+                 store):
         self.name = name
         self.os_name = os_name
         self.branch = branch
         self.features = []
         self.nodes = []
         self.status = status or "provisioning"
-        self.provisioner = str(provisioner)
+        self.provisioner = provisioner
         self.product = product
-        self.clients = clients
+        self.store = store
+
+    def save(self):
+        """
+        Save deployment to store
+        """
+
+        self.store.save(self)
 
     def __repr__(self):
         """

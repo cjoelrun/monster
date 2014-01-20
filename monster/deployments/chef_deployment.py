@@ -7,10 +7,8 @@ from chef import Environment as ChefEnvironment
 
 from monster import util
 from monster.config import Config
-from monster.features.node import ChefServer
 from monster.provisioners.razor import Razor
 from monster.clients.openstack import Creds, Clients
-from monster.provisioners.util import get_provisioner
 from monster.deployments.deployment import Deployment
 from monster.nodes.chef_node import Chef as MonsterChefNode
 from monster.features import deployment as deployment_features
@@ -24,12 +22,11 @@ class Chef(Deployment):
     Opscode's Chef as configuration management
     """
 
-    def __init__(self, name, os_name, branch, environment, provisioner,
-                 status=None, product=None, clients=None):
-        status = status or "provisioning"
+    def __init__(self, name, os_name, branch, environment, provisioner, store
+                 status=None, product=None):
         super(Chef, self).__init__(name, os_name, branch,
                                    provisioner, status, product,
-                                   clients)
+                                   store)
         self.environment = environment
         self.has_controller = False
         self.has_orch_master = False
@@ -44,24 +41,6 @@ class Chef(Deployment):
                                               self.environment, features,
                                               nodes))
         return deployment
-
-    def save_to_environment(self):
-        """
-        Save deployment restore attributes to chef environment
-        """
-
-        features = {key: value for (key, value) in
-                    ((str(x).lower(), x.rpcs_feature) for x in self.features)}
-        nodes = [n.name for n in self.nodes]
-        deployment = {'nodes': nodes,
-                      'features': features,
-                      'name': self.name,
-                      'os_name': self.os_name,
-                      'branch': self.branch,
-                      'status': self.status,
-                      'product': self.product,
-                      'provisioner': self.provisioner}
-        self.environment.add_override_attr('deployment', deployment)
 
     def build(self):
         """
@@ -236,7 +215,7 @@ class Chef(Deployment):
 
     @classmethod
     def fromfile(cls, name, template_name, branch, provisioner, template_file,
-                 template_path=None):
+                 store, template_path=None):
         """
         Returns a new deployment given a deployment template at path
         :param name: name for the deployment
@@ -254,7 +233,7 @@ class Chef(Deployment):
 
         local_api = autoconfigure()
 
-        if ChefEnvironment(name, api=local_api).exists:
+        if store.exists(name):
             # Use previous dry build if exists
             util.logger.info("Using previous deployment:{0}".format(name))
             return cls.from_chef_environment(name)
@@ -291,58 +270,6 @@ class Chef(Deployment):
         for node, features in zip(deployment.nodes, template['nodes']):
             node.add_features(features)
 
-        return deployment
-
-    @classmethod
-    def from_chef_environment(cls, environment):
-        """
-        Rebuilds a Deployment given a chef environment
-        :param environment: name of environment
-        :type environment: string
-        :rtype: Chef
-        """
-
-        local_api = autoconfigure()
-        env = ChefEnvironment(environment, api=local_api)
-        override = env.override_attributes
-        default = env.default_attributes
-        chef_auth = override.get('remote_chef', None)
-        remote_api = None
-        if chef_auth and chef_auth["key"]:
-            remote_api = ChefServer._remote_chef_api(chef_auth)
-            renv = ChefEnvironment(environment, api=remote_api)
-            override = renv.override_attributes
-            default = renv.default_attributes
-        environment = MonsterChefEnvironment(
-            env.name, local_api, description=env.name,
-            default=default, override=override, remote_api=remote_api)
-
-        name = env.name
-        deployment_args = override.get('deployment', {})
-        features = deployment_args.get('features', {})
-        os_name = deployment_args.get('os_name', None)
-        branch = deployment_args.get('branch', None)
-        status = deployment_args.get('status', "provisioning")
-        product = deployment_args.get('product', None)
-        provisioner_name = deployment_args.get('provisioner', "razor")
-        provisioner = get_provisioner(provisioner_name)
-
-        deployment = cls.deployment_config(features, name, os_name, branch,
-                                           environment, provisioner, status,
-                                           product=product)
-
-        nodes = deployment_args.get('nodes', [])
-        for node in (ChefNode(n, local_api) for n in nodes):
-            if not node.exists:
-                util.logger.error("Non existant chef node:{0}".
-                                  format(node.name))
-                continue
-            cnode = MonsterChefNode.from_chef_node(node,
-                                                   deployment_args['os_name'],
-                                                   product, environment,
-                                                   deployment, provisioner,
-                                                   deployment_args['branch'])
-            deployment.nodes.append(cnode)
         return deployment
 
     @classmethod
@@ -445,7 +372,8 @@ class Chef(Deployment):
             ip = self.environment.override_attributes['vips']['nova-api']
         return ip
 
-    def openstack_clients(self):
+    @property
+    def clients(self):
         """
         Setup openstack clients generator for deployment
         """
@@ -459,4 +387,4 @@ class Chef(Deployment):
         auth_url = "http://{0}:5000/v2.0".format(self.horizon_ip())
         creds = Creds(user=user, apikey=apikey, region=region,
                       auth_url=auth_url)
-        self.clients = Clients(creds)
+        return Clients(creds)
