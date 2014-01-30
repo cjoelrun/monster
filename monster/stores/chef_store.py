@@ -47,8 +47,7 @@ class Chef(Store):
         :rtype: Monster.Deployments.Chef
         """
 
-        local_api = autoconfigure()
-        env = ChefEnvironment(name, api=local_api)
+        env = ChefEnvironment(name, api=self.api)
         override = env.override_attributes
         default = env.default_attributes
         chef_auth = override.get('remote_chef', None)
@@ -59,7 +58,7 @@ class Chef(Store):
             override = renv.override_attributes
             default = renv.default_attributes
         environment = MonsterChefEnvironment(
-            env.name, local_api, description=env.name,
+            env.name, self.api, description=env.name,
             default=default, override=override, remote_api=remote_api)
 
         name = env.name
@@ -78,7 +77,7 @@ class Chef(Store):
                                                       product=product)
 
         nodes = deployment_args.get('nodes', [])
-        for node in (ChefNode(n, local_api) for n in nodes):
+        for node in (ChefNode(n, self.api) for n in nodes):
             if not node.exists:
                 util.logger.error("Non existant chef node:{0}".
                                   format(node.name))
