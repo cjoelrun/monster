@@ -8,6 +8,7 @@ import argh
 import traceback
 import webbrowser
 from monster import util
+from monster import stores
 from monster.config import Config
 from monster.tests.tempest import Tempest
 from monster.provisioners.util import get_provisioner
@@ -16,7 +17,8 @@ from monster.deployments.chef_deployment import Chef as MonsterChefDeployment
 
 def build(name="build", template="precise-default", branch="master",
           config=None, destroy=False, dry=False, log=None, log_level="INFO",
-          provisioner="razor", test=False, secret_path=None):
+          provisioner="razor", test=False, secret_path=None,
+          store="chef_store"):
     """
     Builds an OpenStack Cluster
     """
@@ -35,8 +37,9 @@ def build(name="build", template="precise-default", branch="master",
     # provisiong deployment
     util.config = Config(config, secret_path=secret_path)
     cprovisioner = get_provisioner(provisioner)
+    store = util.module_classes(stores)[store]()
     deployment = MonsterChefDeployment.fromfile(
-        name, template, branch, cprovisioner, template_file)
+        name, template, branch, cprovisioner, template_file, store)
     if dry:
         # build environment
         try:
@@ -167,7 +170,7 @@ def _set_log(log, log_level):
     util.set_log_level(log_level)
     if log:
         util.log_to_file(log)
-
+p
 
 if __name__ == "__main__":
     parser = argh.ArghParser()
