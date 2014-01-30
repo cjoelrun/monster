@@ -5,6 +5,7 @@ from monster import util
 from chef import Node as ChefNode
 
 from monster.stores.store import Store
+from monster.stores.common import feature_archive
 from monster.provisioners.util import get_provisioner
 from monster.nodes.chef_node import Chef as MonsterChefNode
 from monster.deployments.chef_deployment import Chef as ChefDeployment
@@ -27,12 +28,8 @@ class Chef(Store):
         :type deployment: Monster.Deployment
         """
 
-        features = {key: value for (key, value) in
-                    ((str(x).lower(), x.rpcs_feature) for x in
-                     deployment.features)}
-        nodes = [n.name for n in deployment.nodes]
-        deployment = {'nodes': nodes,
-                      'features': features,
+        deployment = {'nodes': deployment.node_names,
+                      'features': feature_archive(deployment.features),
                       'name': deployment.name,
                       'os_name': deployment.os_name,
                       'branch': deployment.branch,
@@ -75,9 +72,10 @@ class Chef(Store):
         provisioner_name = deployment_args.get('provisioner', "razor")
         provisioner = get_provisioner(provisioner_name)
 
-        deployment = ChefDeployment.deployment_config(features, name, os_name, branch,
-                                           environment, provisioner, status,
-                                           product=product)
+        deployment = ChefDeployment.deployment_config(features, name, os_name,
+                                                      branch, environment,
+                                                      provisioner, status,
+                                                      product=product)
 
         nodes = deployment_args.get('nodes', [])
         for node in (ChefNode(n, local_api) for n in nodes):
