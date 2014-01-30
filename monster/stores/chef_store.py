@@ -1,9 +1,8 @@
 from chef import autoconfigure
 from chef import Environment as ChefEnvironment
-
-from monster import util
 from chef import Node as ChefNode
 
+from monster import util
 from monster.stores.store import Store
 from monster.stores.common import feature_archive
 from monster.provisioners.util import get_provisioner
@@ -11,6 +10,7 @@ from monster.nodes.chef_node import Chef as MonsterChefNode
 from monster.deployments.chef_deployment import Chef as ChefDeployment
 from monster.environments.chef_environment import Chef as \
     MonsterChefEnvironment
+from monster.features.node.ChefServer import _remote_chef_api as build_api
 
 
 class Chef(Store):
@@ -19,7 +19,7 @@ class Chef(Store):
     """
 
     def __init__(self, api):
-        raise NotImplementedError
+        self.api = autoconfigure()
 
     def save(self, deployment):
         """
@@ -54,7 +54,7 @@ class Chef(Store):
         chef_auth = override.get('remote_chef', None)
         remote_api = None
         if chef_auth and chef_auth["key"]:
-            remote_api = ChefServer._remote_chef_api(chef_auth)
+            remote_api = build_api(chef_auth)
             renv = ChefEnvironment(name, api=remote_api)
             override = renv.override_attributes
             default = renv.default_attributes
@@ -92,5 +92,4 @@ class Chef(Store):
         return deployment
 
     def exists(self, name):
-        api =
-        return ChefEnvironment(name, api=local_api).exists:
+        return ChefEnvironment(name, api=self.api).exists
