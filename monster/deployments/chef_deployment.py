@@ -1,9 +1,7 @@
 import os
 from time import sleep
 
-from chef import autoconfigure
 from chef import Node as ChefNode
-from chef import Environment as ChefEnvironment
 
 from monster import util
 from monster.config import Config
@@ -22,7 +20,7 @@ class Chef(Deployment):
     Opscode's Chef as configuration management
     """
 
-    def __init__(self, name, os_name, branch, environment, provisioner, store
+    def __init__(self, name, os_name, branch, environment, provisioner, store,
                  status=None, product=None):
         super(Chef, self).__init__(name, os_name, branch,
                                    provisioner, status, product,
@@ -231,13 +229,12 @@ class Chef(Deployment):
         :rtype: Chef
         """
 
-        local_api = autoconfigure()
-
         if store.exists(name):
             # Use previous dry build if exists
             util.logger.info("Using previous deployment:{0}".format(name))
-            return cls.from_chef_environment(name)
+            return store.restore(name)
 
+        # get template config from path
         if not template_path:
             path = os.path.join(os.path.dirname(__file__),
                                 os.pardir, os.pardir,
@@ -245,14 +242,13 @@ class Chef(Deployment):
                                     template_file))
         else:
             path = template_path
-
         template = Config(path)[template_name]
 
-        environment = MonsterChefEnvironment(name, local_api, description=name)
-
+        environment = MonsterChefEnvironment(name, description=name)
         os_name = template['os']
         product = template['product']
 
+        # create deployment object
         deployment = cls.deployment_config(template['features'], name, os_name,
                                            branch, environment, provisioner,
                                            product=product)
