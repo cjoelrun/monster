@@ -3,7 +3,7 @@ Store module for Redis
 """
 
 from limpyd import fields
-from limpyd.model import RedisDatabase, RedisModel
+from limpyd.model import RedisModel, RedisDataBase
 
 from monster import util
 from monster.stores.store import Store
@@ -31,12 +31,20 @@ class Redis(Store, RedisModel):
         :param deployment: Deployment to save
         :type deployment: Monster.Deployment
         """
-        pass
+        self.name.set(deployment.name)
+        self.os_name.set(deployment.os_name)
+        self.branch.set(deployment.branch)
+        self.features.set(deployment.feature_names)
+        self.nodes.set(deployment.nodes)
+        self.status.set(deployment.status)
+        self.provisioner.set(deployment.provisioner)
+        self.product.set(deployment.product)
 
     def restore(self, name):
         """
         Restores Deployment from Redis
         :param name: Deployment name to restore
         :type name: string
+        :rtype: Monster.Deployment
         """
         raise NotImplementedError
