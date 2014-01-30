@@ -9,8 +9,8 @@ from environment import Environment as MonsterEnvironment
 
 class Chef(MonsterEnvironment):
 
-    def __init__(self, name, local_api, chef_server_name=None, remote_api=None,
-                 description='', default=None, override=None):
+    def __init__(self, name, local_api=None, chef_server_name=None,
+                 remote_api=None, description='', default=None, override=None):
         super(Chef, self).__init__(name, description)
         self.cookbook_versions = {}
         self.json_class = "Chef::Environment"
@@ -48,12 +48,14 @@ class Chef(MonsterEnvironment):
     def save(self):
 
         # Load local chef env
-        env = ChefEnvironment(self.name, api=self.local_api)
+        if self.local_api:
 
-        # update chef env with local object info
-        for attr in self.__dict__:
-            util.logger.debug("{0}: {1}".format(attr, self.__dict__[attr]))
-            setattr(env, attr, self.__dict__[attr])
+            env = ChefEnvironment(self.name, api=self.local_api)
+
+            # update chef env with local object info
+            for attr in self.__dict__:
+                util.logger.debug("{0}: {1}".format(attr, self.__dict__[attr]))
+                setattr(env, attr, self.__dict__[attr])
 
         # Save local/remote
         env.save(self.local_api)
