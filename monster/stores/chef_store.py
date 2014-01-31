@@ -10,7 +10,7 @@ from monster.nodes.chef_node import Chef as MonsterChefNode
 from monster.deployments.chef_deployment import Chef as ChefDeployment
 from monster.environments.chef_environment import Chef as \
     MonsterChefEnvironment
-from monster.features.node.ChefServer import _remote_chef_api as build_api
+from monster.features.node import ChefServer
 
 
 class Chef(Store):
@@ -53,7 +53,7 @@ class Chef(Store):
         chef_auth = override.get('remote_chef', None)
         remote_api = None
         if chef_auth and chef_auth["key"]:
-            remote_api = build_api(chef_auth)
+            remote_api = ChefServer._remote_chef_api(chef_auth)
             renv = ChefEnvironment(name, api=remote_api)
             override = renv.override_attributes
             default = renv.default_attributes
