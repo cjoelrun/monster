@@ -3,7 +3,7 @@ Store module for Redis
 """
 
 from limpyd import fields
-from limpyd.model import RedisModel, RedisDataBase
+from limpyd.model import RedisModel, RedisDatabase
 
 from monster import util
 from monster.stores.store import Store
@@ -12,7 +12,7 @@ from monster.stores.store import Store
 class Redis(Store, RedisModel):
     if not util.redis:
         creds = util.config['secrets']['redis']
-        util.redis = RedisDataBase(host=creds['host'], port=creds['port'],
+        util.redis = RedisDatabase(host=creds['host'], port=creds['port'],
                                    db=creds['db'])
 
     database = util.redis
