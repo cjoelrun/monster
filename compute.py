@@ -40,7 +40,7 @@ def build(name="build", template="precise-default", branch="master",
     try:
         store = util.module_classes(stores)[store]()
     except KeyError:
-        util.logger.ERROR("")
+        util.logger.error("")
         print "Stores:"
         print util.module_classes(stores).keys()
         sys.exit()
