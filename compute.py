@@ -18,7 +18,7 @@ from monster.deployments.chef_deployment import Chef as MonsterChefDeployment
 def build(name="build", template="precise-default", branch="master",
           config=None, destroy=False, dry=False, log=None, log_level="INFO",
           provisioner="razor", test=False, secret_path=None,
-          store="chef_store"):
+          store="chef"):
     """
     Builds an OpenStack Cluster
     """
@@ -38,16 +38,16 @@ def build(name="build", template="precise-default", branch="master",
     util.config = Config(config, secret_path=secret_path)
     cprovisioner = get_provisioner(provisioner)
     try:
-        store = util.module_classes(stores)[store]()
+        deployment_store = util.module_classes(stores)[store]()
     except KeyError:
-        util.logger.error("")
+        util.logger.error("Store does not exist:{0}".format(store))
         print "Stores:"
         print util.module_classes(stores).keys()
         sys.exit()
 
         util.module_classes(stores)
     deployment = MonsterChefDeployment.fromfile(
-        name, template, branch, cprovisioner, template_file, store)
+        name, template, branch, cprovisioner, template_file, deployment_store)
     if dry:
         # build environment
         try:
