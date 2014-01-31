@@ -37,7 +37,15 @@ def build(name="build", template="precise-default", branch="master",
     # provisiong deployment
     util.config = Config(config, secret_path=secret_path)
     cprovisioner = get_provisioner(provisioner)
-    store = util.module_classes(stores)[store]()
+    try:
+        store = util.module_classes(stores)[store]()
+    except KeyError:
+        util.logger.ERROR("")
+        print "Stores:"
+        print util.module_classes(stores).keys()
+        sys.exit()
+
+        util.module_classes(stores)
     deployment = MonsterChefDeployment.fromfile(
         name, template, branch, cprovisioner, template_file, store)
     if dry:
