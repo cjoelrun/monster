@@ -57,8 +57,9 @@ class Chef(MonsterEnvironment):
                 util.logger.debug("{0}: {1}".format(attr, self.__dict__[attr]))
                 setattr(env, attr, self.__dict__[attr])
 
-        # Save local/remote
-        env.save(self.local_api)
+            # Save local/remote
+            env.save(self.local_api)
+
         if self.remote_api:
             try:
                 env.save(self.remote_api)
