@@ -18,7 +18,7 @@ class Chef(Store):
     Stores restoration data into chef environment
     """
 
-    def __init__(self, api):
+    def __init__(self):
         self.api = autoconfigure()
 
     def save(self, deployment):
