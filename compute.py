@@ -170,7 +170,7 @@ def _set_log(log, log_level):
     util.set_log_level(log_level)
     if log:
         util.log_to_file(log)
-p
+
 
 if __name__ == "__main__":
     parser = argh.ArghParser()
