@@ -75,13 +75,11 @@ class HATest(Test):
             image_id2 = image_id1
         return (image_id1, image_id2)
 
-    @classmethod
     def create_network(self, network_name):
         new_net = {"network": {"name": network_name, "shared": True}}
         net = self.neutron.create_network(new_net)
         return net['network']['id']
 
-    @classmethod
     def create_subnet(self, subnet_name, network_id, subnet_cidr):
         new_subnet = {"subnet": {
             "name": subnet_name, "network_id": network_id,
