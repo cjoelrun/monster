@@ -1,6 +1,4 @@
 from time import sleep
-import json
-from subprocess import check_call
 from novaclient.v1_1 import client as nova_client
 from neutronclient.v2_0.client import Client as neutron_client
 
@@ -55,10 +53,11 @@ class HATest(Test):
         server = self.nova.servers.get(server_id)
         server_ip = server['server']['ipaddress']
         icmd = ("ip netns exec {0} bash; "
-                "ssh -o UseprKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/.ssh/testkey {1}; "
+                "ssh -o UseprKnownHostsFile=/dev/null "
+                "-o StrictHostKeyChecking=no "
+                "-i ~/.ssh/testkey {1}; "
                 "{2}").format(namespace, server_ip, cmd)
         server.run_cmd(icmd)
-
 
     def get_images(self):
         image_ids = (i.id for i in self.nova.images.list())
@@ -96,11 +95,10 @@ class HATest(Test):
     def move_vips_from(self, node):
         self.keepalived_fail(node)
         self.keepalived_restore(node)
-        sleep(10)               # wait for node to be ready
+        #sleep(10)               # wait for node to be ready
 
     def fail_node(self, node):
         node.power_off()
-        sleep(60)
 
     def prepare(self):
         """
@@ -109,6 +107,7 @@ class HATest(Test):
         self.move_vips_from(self.controller2)
 
         #self.fail_node(self.controller1)
+        #sleep(60)
 
     def run_tests(self):
         """
@@ -123,12 +122,13 @@ class HATest(Test):
 
         netns_value = tempest.test_node.run_cmd("ip netns exec vips ip a")
         netns_value = netns_value['return']
-        print "RETVALUE ip netns exec vips ip a: {0}".format(netns_value)
-
+        #print "RETVALUE ip netns exec vips ip a: {0}".format(netns_value)
 
         server_name = "testbuild"
-        server_image = self.nova.images.list()[1] # [0] precise [1] cirros
-        server_flavor = self.nova.flavors.list()[0] # [0] m1.tiny[1] m1. small [2] m1.medium [3] m1.large [4]m1.xlarge
+        images = self.nova.images.list()
+        server_image = next(i for i in images if "cirros" in i.name)
+        flavors = self.nova.flavors.list()
+        server_flavor = next(f for f in flavors if "tiny" in f.name)
         network_name = "testnetwork"
         subnet_name = "testsubnet"
         network_id = self.create_network(network_name)
@@ -137,31 +137,36 @@ class HATest(Test):
 
         networks = [{"net-id": network_id}]
 
-        server = self.nova.servers.create(self, server_name, server_image,
-                                 server_flavor, nics=networks)
+        server = self.nova.servers.create(server_name, server_image,
+                                          server_flavor, nics=networks)
         build_status = "BUILD"
         while build_status == "BUILD":
             build_status = self.nova.servers.list()[0].status
 
         if build_status == "ERROR":
-            print "Build FAILED TO INITIALIZE!"
+            print "\033[1;41mBuild FAILED TO INITIALIZE!\033[1;m"
             #pass
 
         ip_netns_value = tempest.test_node.run_cmd("ip netns")
         ip_netns_value = ip_netns_value['return'].rstrip()
-        print "RETVALUE ip netns: {0}".format(ip_netns_value)
+        #print "RETVALUE ip netns: {0}".format(ip_netns_value)
 
         current_host = tempest.test_node.run_cmd("hostname")
         current_host = current_host['return'].rstrip()
-        print "RETVALUE hostname: {0}".format(current_host)
-
+        print "hostname: {0}".format(current_host)
 
         dhcp_status = self.neutron.list_dhcp_agent_hosting_networks(network_id)
-        assert (dhcp_status['admin_state_up'] and dhcp_status['alive']),\
+        #print "DHCP STATUS!!!!!!!!: {0}".format(dhcp_status)
+        assert (dhcp_status['agents'][0]['admin_state_up'] and
+                dhcp_status['agents'][0]['alive']),\
             "dhcp is NOT working properly"
 
+        print "Deleting server..."
         self.nova.servers.delete(server)
+        sleep(5)
+        print "Deleting subnet..."
         self.neutron.delete_subnet(subnet_id)
+        print "Deleting network..."
         self.neutron.delete_network(network_id)
 
         #tempest.test()
@@ -176,7 +181,6 @@ class HATest(Test):
     def test_list_queues(self):
         queues = self.rabbit.list_queues()
         assert queues is not None, "queues empty"
-
 
     def collect_results(self):
         """
