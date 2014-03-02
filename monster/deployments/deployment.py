@@ -211,24 +211,3 @@ class Deployment(object):
 
         # Bootstrap
         retrofit.bootstrap(iface, lx_bridge, ovs_bridge)
-
-    @property
-    def rabbitmq_mgmt_client(self):
-        """
-        Return rabbitmq mgmt client
-        """
-
-        if 'vips' in self.environment:
-            # HA
-            ip = self.environment['vips']['rabbitmq_queues']
-        else:
-            # Non HA
-            controller = next(self.search_role("controller"))
-            ip = controller.ipaddress
-        url = "{ip}:15672".format(ip=ip)
-
-        user = "guest"
-        password = "guest"
-
-        client = Client(url, user, password)
-        return client
