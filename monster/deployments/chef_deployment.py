@@ -1,6 +1,6 @@
 import os
 import sys
-
+import mysql-python
 from chef import autoconfigure
 from chef import Node as ChefNode
 from chef import Environment as ChefEnvironment
@@ -375,4 +375,8 @@ class Chef(Deployment):
         return client
 
     def mysql_client(self):
+        """
+        Return mysql client
+        """
+
         pass
