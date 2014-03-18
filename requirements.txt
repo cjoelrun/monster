@@ -11,3 +11,4 @@ python-keystoneclient
 pyrax
 tmuxp
 redis-limpyd
+pyrabbit

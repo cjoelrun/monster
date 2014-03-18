@@ -1,7 +1,8 @@
 *.py[cod]
 clean.py
 secret.yaml
-tools/
+ipython_tools/
+results/
 
 # C extensions
 *.so
@@ -43,3 +44,8 @@ nosetests.xml
 
 # redis
 *.rdb
+
+# monster
+*.json
+*.log
+*.xunit

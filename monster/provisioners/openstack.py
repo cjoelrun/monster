@@ -1,3 +1,5 @@
+import socket
+
 from chef import Node, Client
 from provisioner import Provisioner
 from gevent import spawn, joinall, sleep
@@ -95,13 +97,22 @@ class Openstack(Provisioner):
         image = deployment.os_name
         server, password = self.build_instance(name=name, image=image,
                                                flavor=flavor)
-        run_list = ",".join(util.config[str(self)]['run_list'])
+        run_list = ""
+        if util.config[str(self)]['run_list']:
+            run_list = ",".join(util.config[str(self)]['run_list'])
         run_list_arg = ""
         if run_list:
             run_list_arg = "-r {0}".format(run_list)
-        command = 'knife bootstrap {0} -u root -P {1} -N {2} {3}'.format(
-            server.accessIPv4, password, name, run_list_arg)
-        run_cmd(command)
+        client_version = util.config['chef']['client']['version']
+        command = ("knife bootstrap {0} -u root -P {1} -N {2} {3}"
+                   " --bootstrap-version {4}".format(server.accessIPv4,
+                                                     password,
+                                                     name,
+                                                     run_list_arg,
+                                                     client_version))
+        while not run_cmd(command)['success']:
+            util.logger.warning("Epic failure. Retrying...")
+            sleep(1)
         node = Node(name, api=deployment.environment.local_api)
         node.chef_environment = deployment.environment.name
         node['in_use'] = "provisioning"
@@ -112,7 +123,7 @@ class Openstack(Provisioner):
         node.save()
         return node
 
-    def build_instance(self, name="server", image="precise",
+    def build_instance(self, name="server", image="ubuntu",
                        flavor="2GBP"):
         """
         Builds an instance with desired specs
@@ -164,7 +175,19 @@ class Openstack(Provisioner):
             util.logger.error("Instance entered error state. Retrying...")
             server.delete()
             return self.build_instance(name=name, image=image, flavor=flavor)
-
+        ip = server.accessIPv4
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sshup = False
+        while not sshup:
+            try:
+                s.settimeout(2)
+                s.connect((ip, 22))
+                s.close()
+                sshup = True
+            except socket.error:
+                sshup = False
+                util.logger.debug("Waiting for ssh connection...")
+                sleep(1)
         return (server, password)
 
     def _client_search(self, collection_fun, attr, desired, attempts=None,
@@ -223,19 +246,18 @@ class Openstack(Provisioner):
         attempt = 0
         in_attempt = lambda x: not attempts or attempts > x
         while getattr(obj, attr) not in desired and in_attempt(attempt):
-            util.logger.info("Wating:{0} {1}:{2}".format(obj, attr,
-                                                         getattr(obj, attr)))
+            util.logger.info("Waiting:{0} {1}:{2}".format(obj, attr,
+                                                          getattr(obj, attr)))
             sleep(interval)
             obj = fun(obj.id)
             attempt = attempt + 1
         return obj
 
-    def power_off(self, node):
-        id = node['uuid']
-        server = self.compute_client.servers.get(id)
-        server.shutdown()
+    def power_down(self, node):
+        node.run_cmd("echo 1 > /proc/sys/kernel/sysrq; "
+                     "echo o > /proc/sysrq-trigger")
 
-    def power_on(self, node):
+    def power_up(self, node):
         id = node['uuid']
         server = self.compute_client.servers.get(id)
-        server.startup()
+        server.reboot("hard")

@@ -4,8 +4,10 @@ OpenStack deployments
 
 import types
 import tmuxp
+from pyrabbit.api import Client
 
 from monster import util
+from monster.tools.retrofit import Retrofit
 
 
 class Deployment(object):
@@ -67,6 +69,7 @@ class Deployment(object):
         Pre configures node for each feature
         """
 
+        util.logger.info("Building Configured Environment")
         self.status = "loading environment"
         for feature in self.features:
             log = "Deployment feature: update environment: {0}"\
@@ -135,7 +138,7 @@ class Deployment(object):
         self.etc_path = "/etc/"
         self.misc_path = "misc/"
 
-        if self.deployment.os_name == 'precise':
+        if self.deployment.os_name == 'ubuntu':
             self.list_packages_cmd = ["dpkg -l"]
         else:
             self.list_packages_cmd = ["rpm -qa"]
@@ -181,13 +184,15 @@ class Deployment(object):
         server = tmuxp.Server()
         session = server.new_session(session_name=self.name)
         cmd = ("sshpass -p {1} ssh -o UserKnownHostsFile=/dev/null "
-               "-o StrictHostKeyChecking=no -o LogLevel=quiet -l root {0}")
+               "-o StrictHostKeyChecking=no -o LogLevel=quiet "
+               "-o ServerAliveInterval=5 -o ServerAliveCountMax=1 -l root {0}")
         for node in self.nodes:
             name = node.name[len(self.name) + 1:]
             window = session.new_window(window_name=name)
             pane = window.panes[0]
             pane.send_keys(cmd.format(node.ipaddress, node.password))
 
+    @property
     def feature_names(self):
         """
         Returns list features as strings
@@ -199,3 +204,43 @@ class Deployment(object):
 
     def node_names(self):
         return [n.name for n in self.nodes]
+
+    def retrofit(self, branch, ovs_bridge, lx_bridge, iface, del_port=None):
+        """
+        Retrofit the deployment
+        """
+
+        util.logger.info("Retrofit Deployment: {0}".format(self.name))
+
+        retrofit = Retrofit(self)
+
+        # if old port exists, remove it
+        if del_port:
+            retrofit.remove_port_from_bridge(ovs_bridge, del_port)
+
+        # Install
+        retrofit.install(branch)
+
+        # Bootstrap
+        retrofit.bootstrap(iface, lx_bridge, ovs_bridge)
+
+    @property
+    def rabbitmq_mgmt_client(self):
+        """
+        Return rabbitmq mgmt client
+        """
+        overrides = self.environment.override_attributes
+        if 'vips' in overrides:
+            # HA
+            ip = overrides['vips']['rabbitmq-queue']
+        else:
+            # Non HA
+            controller = next(self.search_role("controller"))
+            ip = controller.ipaddress
+        url = "{ip}:15672".format(ip=ip)
+
+        user = "guest"
+        password = "guest"
+
+        client = Client(url, user, password)
+        return client
